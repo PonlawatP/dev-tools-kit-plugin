@@ -1,0 +1,5 @@
+{
+  "name": "dev-tools-kit",
+  "owner": { "name": "Ponlawat" },
+  "plugins": [{ "name": "dev-tools-kit", "source": "./", "description": "Reusable project dev tools with paired agent skills" }]
+}

@@ -1,0 +1,9 @@
+{
+  "description": "SSH into remote envs (key or sshpass) + read-only ps/logs/env inspector for docker or k8s",
+  "skills": ["remote-env-inspect"],
+  "setup": [
+    "Needs ssh (and sshpass when an env uses password auth): sudo dnf install sshpass / apt install sshpass / brew install hudochenkov/sshpass/sshpass",
+    "cp _tools/ssh/.env.example _tools/ssh/.env and fill one block per env (ask the user for hosts/passwords)",
+    "Fill the env table in .claude/skills/remote-env-inspect/SKILL.md, including whether each env holds real data"
+  ]
+}

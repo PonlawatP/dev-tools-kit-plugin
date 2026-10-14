@@ -1,0 +1,10 @@
+{
+  "description": "Playwright multi-account harness: per-role saved sessions, recorded runs, long-lived CDP browser for ad-hoc UI checks",
+  "skills": ["e2e-browser-verify"],
+  "setup": [
+    "cd _tools/e2e && npm install && npx playwright install chromium",
+    "cp .env.example .env, then set E2E_BASE_URL, E2E_ROLES, <ROLE>_EMAIL/_PASSWORD (ask the user for credentials, never invent them)",
+    "Adapt tests/login.cjs selectors to the app's real login page",
+    "Add project gotchas at the bottom of .claude/skills/e2e-browser-verify/SKILL.md"
+  ]
+}

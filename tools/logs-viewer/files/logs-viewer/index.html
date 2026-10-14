@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dev Logs</title>
+<style>
+  :root {
+    --bg:#0f1115; --panel:#151922; --head:#1d2330; --fg:#d7dae0; --dim:#8a93a6;
+    --err:#ff6b6b; --warn:#f0b429;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font: 12px/1.45 ui-monospace, "JetBrains Mono", Menlo, monospace; }
+  #app { display: flex; flex-direction: column; height: 100%; gap: 4px; padding: 4px; }
+  .bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 2px 4px; color: var(--dim); }
+  .bar button { background: var(--head); border: 1px solid transparent; color: var(--fg); border-radius: 12px; font: inherit; padding: 1px 10px; cursor: pointer; }
+  .bar button.off { color: var(--dim); text-decoration: line-through; border-color: var(--dim); background: none; }
+  .bar button[data-c] { border-color: var(--c); }
+  #trace { display: none; color: var(--fg); }
+  #trace.on { display: inline-block; }
+  #panels { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
+  .panel { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; background: var(--panel); border-radius: 6px; overflow: hidden; }
+  .panel.hidden { display: none; }
+  .head { display: flex; align-items: center; gap: 8px; padding: 4px 10px; background: var(--head); font-weight: 600; }
+  .head .dim { color: var(--dim); font-weight: 400; margin-left: auto; }
+  .head button { background: none; border: 1px solid var(--dim); color: var(--fg); border-radius: 4px; font: inherit; padding: 0 6px; cursor: pointer; }
+  .body { flex: 1; overflow: auto; padding: 4px 10px; }
+  #empty { color: var(--dim); padding: 16px; }
+
+  /* one record = summary line (+ collapsible detail) */
+  .rec { --c: var(--fg); --m: var(--fg); border-left: 3px solid var(--c); padding-left: 6px; margin-bottom: 1px; }
+  .sum { display: flex; gap: 8px; cursor: pointer; white-space: nowrap; }
+  .sum .t { color: var(--dim); }
+  .sum .tag { min-width: 5ch; font-weight: 600; color: var(--c); }
+  .sum .msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--m); }
+  .sum .trace { color: var(--dim); text-decoration: underline dotted; }
+  .det { display: none; margin: 0 0 2px 12px; padding: 0; white-space: pre-wrap; word-break: break-all; color: var(--dim); font: inherit; }
+  .rec.open .det { display: block; }
+  .det:empty { display: none !important; }
+  .rec.open .msg { white-space: normal; overflow: visible; }
+  #panels:not([data-sqlsum]) .rec[data-cat=sql].open .msg { display: none; }
+  .rec[data-cat=err] .msg, .rec[data-cat=warn] .msg { white-space: normal; overflow: visible; }
+  .rec[data-cat=err]  { --c: var(--err);  --m: var(--err); }
+  .rec[data-cat=warn] { --c: var(--warn); --m: var(--warn); }
+  .rec[data-cat=http][data-s="4"] { --c: var(--warn); }
+  .rec[data-cat=http][data-s="5"] { --c: var(--err); --m: var(--err); }
+
+</style>
+<style id="trace-filter"></style>
+</head>
+<body>
+<div id="app">
+  <div class="bar" id="terms">terminals:</div>
+  <div class="bar" id="cats">show:<button id="trace"></button></div>
+  <div class="bar" id="view">view:</div>
+  <div id="panels"><div id="empty">Waiting for logs in .logs/ ... start a service task first.</div></div>
+</div>
+<script type="module">
+import { TYPES, feedLine, recMessage } from '/parse.mjs';
+const MAX_RECORDS = 2000;
+const panels = {};
+const panelsEl = document.getElementById('panels');
+
+function load(key, fallback) {
+  try { const v = localStorage.getItem(key); return v === null ? fallback : new Set(JSON.parse(v)); } catch { return fallback; }
+}
+function save(key, set) { try { localStorage.setItem(key, JSON.stringify([...set])); } catch {} }
+
+const hiddenTerms = load('logs-viewer.hidden', new Set());
+const hiddenCats = load('logs-viewer.cats', new Set(TYPES.filter((t) => t.hide).map((t) => t.cat)));
+
+// per-type colors and filter rules come from TYPES in parse.mjs
+const typeStyle = document.createElement('style');
+typeStyle.textContent = TYPES.map((t) =>
+  `.rec[data-cat=${t.cat}] { --c: ${t.color}; ${t.dim ? `--m: ${t.color};` : ''} }\n#panels[data-hide~=${t.cat}] .rec[data-cat=${t.cat}] { display: none; }`).join('\n');
+document.head.append(typeStyle);
+
+const flag = (key, dflt) => { try { const v = localStorage.getItem(key); return v === null ? dflt : v === '1'; } catch { return dflt; } };
+const setFlag = (key, v) => { try { localStorage.setItem(key, v ? '1' : '0'); } catch {} };
+let expandAll = flag('logs-viewer.expand', false);
+let sqlSum = flag('logs-viewer.sqlsum', true);
+
+function applyCats() { panelsEl.dataset.hide = [...hiddenCats].join(' '); }
+applyCats();
+
+TYPES.forEach(({ cat: c, color }) => {
+  const b = document.createElement('button');
+  b.textContent = c;
+  b.dataset.c = c;
+  b.style.setProperty('--c', color);
+  b.classList.toggle('off', hiddenCats.has(c));
+  b.onclick = () => {
+    hiddenCats.has(c) ? hiddenCats.delete(c) : hiddenCats.add(c);
+    b.classList.toggle('off', hiddenCats.has(c));
+    save('logs-viewer.cats', hiddenCats);
+    applyCats();
+    repin();
+  };
+  document.getElementById('cats').insertBefore(b, document.getElementById('trace'));
+});
+
+function viewToggle(label, get, onChange) {
+  const b = document.createElement('button');
+  b.textContent = label;
+  b.classList.toggle('off', !get());
+  b.onclick = () => { onChange(); b.classList.toggle('off', !get()); };
+  document.getElementById('view').append(b);
+}
+viewToggle('expand all', () => expandAll, () => {
+  expandAll = !expandAll;
+  setFlag('logs-viewer.expand', expandAll);
+  document.querySelectorAll('.rec').forEach((r) => r.classList.toggle('open', expandAll));
+  repin();
+});
+viewToggle('sql summary', () => sqlSum, () => {
+  sqlSum = !sqlSum;
+  setFlag('logs-viewer.sqlsum', sqlSum);
+  panelsEl.toggleAttribute('data-sqlsum', sqlSum);
+  document.querySelectorAll('.rec[data-cat=sql]').forEach((r) => render(r._rec));
+  repin();
+});
+panelsEl.toggleAttribute('data-sqlsum', sqlSum);
+
+// trace filter: click a trace id to show only records with that id across all terminals
+const traceBtn = document.getElementById('trace');
+function setTrace(id) {
+  document.getElementById('trace-filter').textContent = id
+    ? `#panels .rec:not([data-trace="${id}"]) { display: none; }` : '';
+  traceBtn.classList.toggle('on', !!id);
+  traceBtn.textContent = id ? `trace ${id.slice(0, 8)}  x` : '';
+  repin();
+}
+traceBtn.onclick = () => setTrace(null);
+
+// Each terminal is either pinned to the bottom (follows new logs) or free (user scrolled up).
+// Only user scrolling changes the state; layout changes just re-apply it via repin().
+const atBottom = (el) => el.scrollHeight - el.scrollTop - el.clientHeight < 8;
+const toBottom = (p) => { p.body.scrollTop = p.body.scrollHeight; p.last = p.body.scrollTop; };
+function repin() { Object.values(panels).forEach((p) => p.pinned && toBottom(p)); }
+
+function setHidden(svc, off) {
+  off ? hiddenTerms.add(svc) : hiddenTerms.delete(svc);
+  panels[svc].el.classList.toggle('hidden', off);
+  panels[svc].chip.classList.toggle('off', off);
+  if (!off && panels[svc].pinned) toBottom(panels[svc]);
+  save('logs-viewer.hidden', hiddenTerms);
+}
+
+function panel(svc) {
+  if (panels[svc]) return panels[svc];
+  document.getElementById('empty')?.remove();
+  const el = document.createElement('section');
+  el.className = 'panel';
+  el.innerHTML = `<div class="head"><span>${svc}</span><span class="dim"></span><button>clear</button></div><div class="body"></div>`;
+  panelsEl.append(el);
+  const chip = document.createElement('button');
+  chip.textContent = svc;
+  chip.onclick = () => setHidden(svc, !hiddenTerms.has(svc));
+  document.getElementById('terms').append(chip);
+  const p = (panels[svc] = { el, chip, body: el.querySelector('.body'), count: el.querySelector('.dim'), cur: null, partial: '', n: 0, pinned: true });
+  // scroll events are async: ignore the ones we caused ourselves (scrollTop still equals what we set)
+  p.body.addEventListener('scroll', () => { if (p.el.offsetParent && p.body.scrollTop !== p.last) p.pinned = atBottom(p.body); });
+  new ResizeObserver(() => p.pinned && toBottom(p)).observe(p.body);
+  el.querySelector('button').onclick = () => clear(p);
+  setHidden(svc, hiddenTerms.has(svc));
+  return p;
+}
+
+function clear(p) { p.pinned = true; p.body.textContent = ''; p.cur = null; p.partial = ''; p.n = 0; p.count.textContent = ''; }
+
+function mount(p, rec) {
+  const el = document.createElement('div');
+  el.className = 'rec' + (expandAll ? ' open' : '');
+  el.innerHTML = '<div class="sum"><span class="t"></span><span class="tag"></span><span class="msg"></span><span class="trace"></span></div><pre class="det"></pre>';
+  rec.el = el;
+  el._rec = rec;
+  el.querySelector('.t').textContent = rec.time || '';
+  const tr = el.querySelector('.trace');
+  el.querySelector('.sum').onclick = (e) => { if (e.target !== tr) { el.classList.toggle('open'); repin(); } };
+  tr.onclick = () => rec.trace && setTrace(rec.trace);
+  p.body.append(el);
+  p.n++;
+}
+
+function render(r) {
+  const el = r.el;
+  el.dataset.cat = r.cat;
+  el.dataset.trace = r.trace;
+  el.dataset.s = r.status ? String(r.status)[0] : '';
+  el.querySelector('.tag').textContent = r.cat === 'err' ? 'ERROR' : r.cat === 'warn' ? 'WARN' : r.cat;
+  el.querySelector('.msg').textContent = recMessage(r, sqlSum);
+  el.querySelector('.trace').textContent = r.trace ? r.trace.slice(0, 8) : '';
+  el.querySelector('.det').textContent = r.lines.join('\n');
+}
+
+function feed(p, line) {
+  const res = feedLine(p, line);
+  if (!res) return;
+  if (res.isNew) mount(p, res.rec);
+  render(res.rec);
+}
+
+function append(p, text) {
+  const body = p.body;
+  const lines = (p.partial + text).split('\n');
+  p.partial = lines.pop();
+  lines.forEach((l) => feed(p, l));
+  while (p.n > MAX_RECORDS) { body.firstChild.remove(); p.n--; }
+  p.count.textContent = `${p.n} records`;
+  if (p.pinned) toBottom(p);
+}
+
+const es = new EventSource('/events');
+es.onmessage = (e) => {
+  const { svc, text, reset } = JSON.parse(e.data);
+  const p = panel(svc);
+  if (reset) clear(p);
+  if (text) append(p, text);
+};
+window.__lv = { panels, setTrace }; // test hook
+</script>
+</body>
+</html>

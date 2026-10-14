@@ -1,0 +1,9 @@
+{
+  "description": "Per-service dev logs (_tools/logs.sh run/mark/since) + live browser viewer and one-line-per-record CLI",
+  "skills": ["log-bookmark", "log-format-onboard"],
+  "setup": [
+    "Start each dev service through _tools/logs.sh run <svc> <cmd...> (e.g. in .vscode/tasks.json) so it writes .logs/<svc>.log",
+    "Optional: add an IDE task for node _tools/logs-viewer/server.mjs (port LOGS_PORT, default 8199)",
+    "After each service has logged once, run the log-format-onboard skill so its lines get categorized"
+  ]
+}
