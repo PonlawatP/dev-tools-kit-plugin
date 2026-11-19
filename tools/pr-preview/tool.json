@@ -1,0 +1,8 @@
+{
+  "description": "PR body template + GitHub-like HTML preview (tables, checkboxes, mermaid), used as the gh pr create body",
+  "skills": ["pr-body"],
+  "setup": [
+    "Adapt _tools/pr-preview/pr-body.template.md to the project: sections, module names, default base branch in the Branch comment",
+    "Write the project's base branch and PR rules (attribution, split policy) at the bottom of .claude/skills/pr-body/SKILL.md"
+  ]
+}

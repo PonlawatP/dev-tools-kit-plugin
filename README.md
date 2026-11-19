@@ -7,6 +7,7 @@ Pick what a project needs at init; add tools that only make sense in one project
 |---|---|---|---|
 | `e2e` | `_tools/e2e/` | `e2e-browser-verify`, `pr-screenshots` | Playwright multi-account harness: per-role saved sessions, recorded runs, one long-lived CDP browser for ad-hoc checks, PR screenshots uploaded to a `pr-assets` branch |
 | `logs-viewer` | `_tools/logs.sh`, `_tools/logs-viewer/` | `log-bookmark`, `log-format-onboard` | per-service dev logs with mark/since bookmarks, live browser viewer, one-line-per-record CLI |
+| `pr-preview` | `_tools/pr-preview/` | `pr-body` | PR body template + GitHub-like HTML preview (tables, checkboxes, mermaid) used as the `gh pr create` body |
 | `ssh` | `_tools/ssh/` | `remote-env-inspect` | ssh (key or sshpass) + read-only ps/logs/env for docker or k8s envs |
 
 Skills install into the project's `.claude/skills/` so they travel with the repo.

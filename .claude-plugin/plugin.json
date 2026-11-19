@@ -1,7 +1,7 @@
 {
   "name": "dev-tools-kit",
-  "description": "Reusable project dev tools (Playwright multi-account e2e, dev log viewer, remote ssh inspector) with paired agent skills. Install per project with /tools-init, add project-only tools with /tools-new.",
-  "version": "0.2.0",
+  "description": "Reusable project dev tools (Playwright multi-account e2e, dev log viewer, remote ssh inspector, PR body preview) with paired agent skills. Install per project with /tools-init, add project-only tools with /tools-new.",
+  "version": "0.3.0",
   "author": { "name": "Ponlawat", "email": "ponlawat_pa@maholan.co.th" },
   "license": "MIT",
   "keywords": ["dev-tools", "playwright", "e2e", "logs", "ssh", "skills"]

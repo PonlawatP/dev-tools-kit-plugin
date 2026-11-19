@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PR Preview</title>
+<style>
+  :root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --border:#d1d9e0; --code:#f6f8fa; --accent:#0969da; --tab:#f6f8fa; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1; --border:#3d444d; --code:#151b23; --accent:#4493f8; --tab:#151b23; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans Thai",Helvetica,Arial,sans-serif; }
+  .wrap { max-width:1012px; margin:0 auto; padding:24px 16px 64px; }
+  .tabs { display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:16px; position:sticky; top:0; background:var(--bg); z-index:1; }
+  .tabs button { font:inherit; color:var(--muted); background:none; border:1px solid transparent; border-bottom:none; padding:8px 16px; border-radius:6px 6px 0 0; cursor:pointer; margin-bottom:-1px; }
+  .tabs button[aria-selected=true] { color:var(--fg); background:var(--bg); border-color:var(--border); font-weight:600; }
+  .title { font-size:26px; font-weight:400; margin:0 0 4px; }
+  .meta { color:var(--muted); font-size:14px; margin-bottom:16px; }
+  .box { border:1px solid var(--border); border-radius:6px; }
+  .box-h { background:var(--tab); border-bottom:1px solid var(--border); padding:8px 16px; font-size:14px; color:var(--muted); border-radius:6px 6px 0 0; }
+  .md { padding:16px 24px; overflow-wrap:anywhere; }
+  .md h2 { font-size:1.5em; border-bottom:1px solid var(--border); padding-bottom:.3em; margin:24px 0 16px; }
+  .md h3 { font-size:1.25em; margin:24px 0 12px; }
+  .md code { background:var(--code); padding:.2em .4em; border-radius:6px; font-size:85%; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .md pre { background:var(--code); padding:16px; border-radius:6px; overflow:auto; }
+  .md pre code { padding:0; background:none; }
+  .md table { border-collapse:collapse; display:block; overflow:auto; margin:0 0 16px; }
+  .md th, .md td { border:1px solid var(--border); padding:6px 13px; }
+  .md tr:nth-child(2n) { background:var(--code); }
+  .md a { color:var(--accent); }
+  .md ul { padding-left:2em; }
+  .md li.task { list-style:none; margin-left:-1.4em; }
+  .mermaid { background:var(--code); border-radius:6px; padding:16px; overflow:auto; text-align:center; }
+  .comment { color:var(--muted); font-style:italic; font-size:14px; border-left:3px solid var(--border); padding-left:8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tabs" role="tablist"></div>
+  <div id="view"></div>
+</div>
+<!--MD_BLOCKS-->
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  mermaid.initialize({ startOnLoad:false, theme: dark ? 'dark' : 'default' });
+  const prs = [...document.querySelectorAll('script[type="text/markdown"]')].map(s => ({ name:s.dataset.name, md:s.textContent }));
+  const tabs = document.querySelector('.tabs'), view = document.getElementById('view');
+
+  function render(pr) {
+    const titleMatch = pr.md.match(/<!--\s*Title:\s*(.*?)\s*-->/);
+    // HTML comments are invisible on GitHub; show them as hints so placeholders stand out in the preview.
+    const branchMatch = pr.md.match(/<!--\s*Branch:\s*(.*?)\s*-->/);
+    const body = pr.md.replace(/<!--\s*(Title|Branch):.*?-->\n?/g, '')
+      .replace(/<!--\s*([\s\S]*?)\s*-->/g, '<span class="comment">$1</span>')
+      .replace(/^- \[( |x)\] /gm, (_, c) => `- <input type="checkbox" disabled ${c === 'x' ? 'checked' : ''}> `);
+    const html = marked.parse(body).replace(/<li><input/g, '<li class="task"><input')
+      .replace(/<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g, (_, c) => `<pre class="mermaid">${c}</pre>`);
+    view.innerHTML = `<h1 class="title">${titleMatch ? titleMatch[1] : pr.name}</h1>
+      <div class="meta">${branchMatch ? branchMatch[1] : ''}</div>
+      <div class="box"><div class="box-h">Description</div><div class="md">${html}</div></div>`;
+    mermaid.run({ nodes: view.querySelectorAll('.mermaid') });
+  }
+
+  prs.forEach((pr, i) => {
+    const b = document.createElement('button');
+    b.textContent = pr.name; b.setAttribute('role','tab');
+    b.onclick = () => { tabs.querySelectorAll('button').forEach(x => x.setAttribute('aria-selected', x === b)); render(pr); };
+    tabs.appendChild(b);
+    if (i === 0) b.click();
+  });
+</script>
+</body>
+</html>
