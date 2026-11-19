@@ -1,6 +1,9 @@
 {
-  "description": "Playwright multi-account harness: per-role saved sessions, recorded runs, long-lived CDP browser for ad-hoc UI checks",
-  "skills": ["e2e-browser-verify"],
+  "description": "Playwright multi-account harness: per-role saved sessions, recorded runs, long-lived CDP browser for ad-hoc UI checks; PR screenshots (spec-driven shots + upload to an orphan pr-assets branch)",
+  "skills": [
+    "e2e-browser-verify",
+    "pr-screenshots"
+  ],
   "setup": [
     "cd _tools/e2e && npm install && npx playwright install chromium",
     "cp .env.example .env, then set E2E_BASE_URL, E2E_ROLES, <ROLE>_EMAIL/_PASSWORD (ask the user for credentials, never invent them)",

@@ -34,6 +34,13 @@ trace on failure, step screenshots via `captureStep(page, testInfo, 'NN-label')`
 re-logs in inline if needed, and saves the rotated session every 15s. See the
 `e2e-browser-verify` skill for the attach/check/close flow.
 
+## PR screenshots
+
+`node scripts/pr-shots.mjs <spec.json>` shoots a list of pages through the running browser-host
+into `session-results/pr-<n>/`; `scripts/upload-shots.sh <repo-dir> session-results/pr-<n>`
+pushes them to the repo's orphan `pr-assets` branch and prints the Markdown for the PR body. See
+the `pr-screenshots` skill.
+
 ## Credentials
 
 `.env`, `.auth/` and `session-results/` are gitignored. Never commit them or paste credentials

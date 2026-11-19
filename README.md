@@ -5,7 +5,7 @@ Pick what a project needs at init; add tools that only make sense in one project
 
 | tool | installs to | paired skills | what |
 |---|---|---|---|
-| `e2e` | `_tools/e2e/` | `e2e-browser-verify` | Playwright multi-account harness: per-role saved sessions, recorded runs, one long-lived CDP browser for ad-hoc checks |
+| `e2e` | `_tools/e2e/` | `e2e-browser-verify`, `pr-screenshots` | Playwright multi-account harness: per-role saved sessions, recorded runs, one long-lived CDP browser for ad-hoc checks, PR screenshots uploaded to a `pr-assets` branch |
 | `logs-viewer` | `_tools/logs.sh`, `_tools/logs-viewer/` | `log-bookmark`, `log-format-onboard` | per-service dev logs with mark/since bookmarks, live browser viewer, one-line-per-record CLI |
 | `ssh` | `_tools/ssh/` | `remote-env-inspect` | ssh (key or sshpass) + read-only ps/logs/env for docker or k8s envs |
 
